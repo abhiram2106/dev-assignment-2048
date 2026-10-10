@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk24'
+        nodejs 'node24'
+    }
+
+   
+    stages {
+
+        
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/abhiram2106/dev-assignment-2048.git'
+            }
+        }
+
+        
+
+        
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+      
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+
+                        sh 'docker build -t 2048 .'
+
+                        sh 'docker tag 2048 abhiram5673/2048:latest'
+
+                        sh 'docker push abhiram5673/2048:latest'
+                    }
+                }
+            }
+        }
+
+        
+
+        stage('Deploy to Container') {
+            steps {
+                sh '''
+                docker rm -f 2048 || true
+                docker run -d --name 2048 -p 3000:3000 abhiram5673/2048:latest
+                '''
+            }
+        }
+        stage('Deploy to kubernetes') {
+    steps {
+        script {
+            withKubeConfig(
+                credentialsId: 'k8s',
+                caCertificate: '',
+                clusterName: '',
+                contextName: '',
+                namespace: '',
+                restrictKubeConfigAccess: false,
+                serverUrl: ''
+            ) {
+                sh 'kubectl apply -f deployment.yaml'
+            }
+        }
+    }
+}
+        
+    }
+}
